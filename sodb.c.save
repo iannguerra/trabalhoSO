@@ -1,0 +1,36 @@
+#define _FILE_OFFSET_BITS 64
+
+#include "sodb.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#define fseeko _fseeki64
+#define ftello _ftelli64
+#endif
+
+#define SODB_HEADER_SIZE ((sizeof(uint64_t) *3) +4)
+
+/* djb2 hash function */
+static uint64_t SODB_hash (const void *b, unsigned long len){
+	unsigned long i;
+	uint64_t hash = 5381;
+	for (i=0; i <len; ++i)
+		hash = ((hash << 5) + hash) + (uint64_t)(((const uint8_t *)b) [i]);
+	return hash;
+}
+
+int SOBD_open(
+	SODB *db,
+	const char *path,
+	int mode,
+	unsigned long hash_table_size,
+	unsigned long key_size,
+	unsigned long value_size)
+{
+		uint64_t tmp;
+	
+	
+	
