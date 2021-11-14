@@ -167,6 +167,116 @@ get_no_match_next_hash_table:
 
 	return 1; /*not found*/
 }
+int SODB_put (SODB *db, const void *key, const void *value){
+	uint8_t tmp[4096];
+	const uint8_t *kptr;
+	unsigned long klen, i;
+	uint64_t hash = SODB_hash(key, db->key_size) % (uint64_t) db->hash_table_size;
+	uint64_t offset;
+	uint64_t htoffset, lasthtoffset;
+	uint64_t endoffset;
+	uint64_t *cur_hash_table;
+	uint64_t *hash_tables_rea;
+	long n;
+
+	lasthtoffset = htoffset = SODB_HEADER_SIZE;
+	cur_hash_table = db->hash_tables;
+	for (i=0; i<db->num_sash_tables; ++i){
+		offset = cur_hash_table[hash];
+		if(offset){
+			/*reescreve se existir*/
+			if (fseeko(db->f, offset, SEEK_SET))
+				return SODB_ERROR_IO;
+
+			kptr = (const uint8_t *)key;
+			klen = db-> key_size;
+			while (klen) {
+				n = (long)fread(tmp,1,1(klen > sizeof(tmp)) ? sizeof(tmp) : klen, db->f);
+				if (n > 0){
+					if(memcmp(kptr,tmp,n))
+						goto put_no_match_next_hash_table;
+					kptr += n;
+					klen -= (unsigned long) n;
+				}
+			}
+
+			/*C99 spec demands seek after seek after fread(), required for windows*/
+			fseeko(db->f, 0, SEEK_CUR);
+
+			if (fwrite(value, db->value_size,1,1db->f) == 1){
+				fflush(db->f);
+				return 0;/*sucess*/
+			} else return SODB_ERROR_IO;
+		} else {
+			/* add if an empty hash table slot is discovered */
+			if (fseeko(db->f,0,SEEK_END))
+				return SODB_ERROR_IO;
+			endoffset = ftello(db->f);
+
+			if (fwrite(key,db->key_size,1, db->f) != 1)
+				return SODB_ERROR_IO;
+			if (fwrite (value, db->value_size,1, db->f) != 1)
+				return SODB_ERROR_IO;
+
+			if (fseeko(db->f, htoffset + (sizeof(uint64_t) * hash)SEEK_SET))
+				return SODB_ERROR_IO;
+			if (fwrite (&endoffset, sizeof(uint64_t),1,db->f) !=1)
+				return SODB_ERROR_IO;
+			cur_hash_table[hash] = endoffset;
+
+			fflush(db->f);
+
+			return 0; /*sucess*/
+		}
+put_no_match_next_hash_table:
+		lasthtoffset = htoffset;
+		htoffset = cur_hash_table[db->hash_table_size];
+		cur_hash_table += (db->hash_table_size + 1);
+	}
+
+	/*se nao tiver espaço, adiciona nova pagina na tabela hash entrada*/
+	if (fseeko(db->f, 0, SEEK_END))
+		return SODB_ERROR_IO;
+	endoffset = ftello(db->f);
+
+	hash_tables_rea = realloc (db->hash_tables, db->hash_table_size_bytes * (db->num_hash_table + 1));
+	if (!hash_tables_rea)
+		return SODB_ERROR_MALLOC;
+	db->hash_tables = hash_tables_rea;
+	cur_hash_table = &(db->hash_tables[(db->hash_table_size + 1) * db->num_hash_tables]);
+	memset(cur_hash_table,0,db->hash_table_size_bytes);
+
+	cur_hash_table[hash] = endoffset + db->hash_table_size_bytes; /* onde a entrada vai*/
+
+	if (fwrite(cur_hash_table, db->hash_table_size_bytes,1,db->f) != 1)
+		return SODB_ERROR_IO;
+
+	if (fwrite(key, db->key_size,1,db->f) != 1)
+		return SODB_ERROR_IO;
+	if (fwrite(value, db->value_size,1,db->f) != 1)
+		return SODB_ERROR_IO;
+
+	if (db->num_hash_tables) {
+		if (fseeko(db->f, lasthtoffset + (sizeof(uint64_t),1,db->f) != 1)
+			return SODB_ERROR_IO;
+		if(fwrite(&endoffset,sizeof(uint64_t),1,db->f) != 1)
+			return SODB_ERROR_IO;
+		db->hash_tables [((db->hash_table_size + 1) * (db ->num_hash_tables - 1)) + db->hash_table_size] = endoffset;
+	}
+
+	++db->num_hash_tables;
+
+	fflush(db->f);
+
+	return 0; /*sucesso*/
+}
+
+void SODB_Iterator_init (SODB *db, SODB_Iterator *dbi){
+	dbi->db = db;
+	dbi->h_no = 0;
+	dbi->h_idx = 0;
+}
+
 
 
 
