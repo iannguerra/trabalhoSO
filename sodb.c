@@ -276,7 +276,130 @@ void SODB_Iterator_init (SODB *db, SODB_Iterator *dbi){
 	dbi->h_no = 0;
 	dbi->h_idx = 0;
 }
+int SODB_Iterator_next(SODB_Iterator *dbi, void *kbuf, void *vbuf){
+	uint64_t offset;
 
+	if ((dbi->h_no < dbi->db->num_hash_tables)&&(dbi->h_idx < dbi->db->hash_table_size)){
+		while (!(offset = dbi->db->hash_tables[((dbi->db->hash_table_size + 1) *dbi->h_no) + dbi->h_idx])){
+			if (++dbi->h_idx >= dbi->db->hash_table_size){
+				dbi->h_idx = 0;
+				if (++dbi->h_no >= dbi->db->num_hash_tables)
+					return 0;
+			}
+		}
+		if (fseeko(dbi->db->f,offset,SEEK_SET))
+			return SODB_ERROR_IO;
+		if (fread(kbuf,dbi->db->key_size,1,dbi->db->f) != 1)
+			return SODB_ERROR_IO;
+		if (fread(vbuf, dbi->db->value_size,1,dbi->db->f) !=1)
+			return SODB_ERROR_IO;
+		if (++dbi->h_idx >= dbi->db->hash_table_size) {
+			dbi->h_idx = 0;
+			++dbi->h_no;
+		}
+		return 1;
+	}
+	return 0;
+}
+#ifdef SODB_TEST
 
+#include <inttypes.h>
+
+int main(int argc, char **argv){
+
+	uint64_t i,j;
+	uint64_t v[8];
+	SODB db;
+	SODB_Iterator dbi;
+	char got_all)values[10000];
+	int q;
+
+	printf("Abrindo um novo banco de dados teste.db\n");
+	if (SODB_open(&db, "teste.db", SODB_OPEN_MODE_RWREPLACE, 1024,8,sizeof(v))){
+		printf("SODB_open falhou\n".
+		return 1;
+	}
+	printf ("adding and then re-getting 10000 64-byte value \n");
+
+	for (i=0; i<10000;++i){
+		for(j=0;j<8;++j)
+			v[j] = i;
+		if (SODB_put(&db,&i,v)){
+			printf("SODB_put failed (%"PRIu64") (%d)\n",i,q);
+			return 1;
+	}
+	memset (v,0,sizeof(v));
+	if ((q = SODB_get(&db,&i,v))){
+		printf ("SODB_get (1) failed (%"PRIu64") (%d)\n",i,q);
+		return 1;
+	}
+	for (j=0; j<8;++j){
+		if (v[j] != i){
+			printf ("SODB_get (1) failed, bad data (%"PRIu64")\n",i);
+			return 1;
+		}
+	}
+}
+
+printf ("Getting 10000 64-bytes values\n");
+
+for (i=0; i<10000;++i){
+	if ((q =SODB_get (&db, &i, v))){
+		printf ("SODB_get (2) failed (%"PRIu64") (%d)\n",i,q);
+		return 1;
+	}
+	for (j=0;j<8;++j){
+		if (v[j] != i){
+			printf ("SODB_get (2) failed, bad data (%"PRIu64")\n",i);
+			return 1;
+		}
+	}
+
+}
+printf ("Gettin 10000 64-bytes values\n");
+
+for (i=0; i<10000;++i){
+	if ((q = SODB_get(&db, &i, v))) {
+		printf ("SODB_get (3) failed (%"PRIu64")\n",i);
+		return 1;
+	}
+	for (j=0; j<8; ++j) {
+		if (v[j] != i) {
+			printf ("SODB_get (3) failed, bad data (%"PRIu64")\n",i);
+			return 1;
+		}
+	}
+}
+
+printf ("Teste de iteração\n");
+
+SODB_Iterator_init (&db, &dbi);
+i = 0xdeadbeef;
+memset (got_all_values,0,sizeof(got_all_values));
+while (SODB_Iterator_next(&dbi, &i, &v) > 0){
+	if (i < 10000)
+		got_all_values[i] = 1;
+	else {
+		printf ("SODB_Iterator_next failed, bad data(%"PRIu64")\n",i);
+		return 1;
+	}
+}
+
+for(i=0; i<10000;++i) {
+	if (!got_all_values[i]) {
+		printf ("SODB_Iterator failed, missing value index %"PRIu64"\n",i);
+		return 1;
+	}
+}
+
+SODB_close(&db);
+
+printf ("Tudo certo\n");
+
+return 0;
+
+}
+
+#endif
 
 
