@@ -8,7 +8,7 @@ void inserir(FILE *arquivo, int cont);
 void selecionar(FILE *arquivo);
 void selecionar_especifico(FILE *arquivo);
 void deletar(FILE *arquivo);
-void update(FILE *arquivo);
+void alterar(FILE *arquivo);
 
 int key(FILE *arquivo, int cod);
 
@@ -23,12 +23,13 @@ typedef struct st_registro registro;
 int main()
 {
     int opcao;
+    int cont = 0;
     FILE *arquivo;
 
     while(opcao != 5)
     {
-        printf("\n\n=======SIMPLEDB=======:\n");
-        printf("\n\n1 - INSERIR REGISTRO\n2 - SELECIONAR TODOS REGISTRO\n3 - SELECIONAR REGISTRO ESPECIFICO\n4 - DELETAR REGISTRO\n\n");
+        printf("\n\n=======SIMPLEDB=======\n");
+        printf("\n\n1 - INSERIR REGISTRO\n2 - SELECIONAR TODOS REGISTRO\n3 - SELECIONAR REGISTRO ESPECIFICO\n4 - ALTERAR REGISTRO\n\n");
         scanf("%d", &opcao);
         
         switch (opcao)
@@ -41,7 +42,7 @@ int main()
                     printf("Erro ao abrir o arquivo!");
                     }
                 }
-                int cont;
+                
                 cont ++;
                 inserir(arquivo, cont);
                 fclose(arquivo);
@@ -64,6 +65,15 @@ int main()
                 selecionar_especifico(arquivo);
                 fclose(arquivo);
                 break;
+            
+            case 4:
+                if((arquivo = fopen("simpledb.dat", "rb+"))==NULL)
+                {
+                    printf("Erro ao abrir o arquivo!");
+                }
+                alterar(arquivo);
+                fclose(arquivo);
+                break;
         }
         
     }
@@ -74,8 +84,7 @@ int main()
 void inserir(FILE *arquivo, int cont)
 {
     registro reg;
-    
-    reg.id = 0;
+
     reg.id = cont;
 
     printf("\nSORT-KEY: ");
@@ -100,7 +109,7 @@ void selecionar(FILE *arquivo)
     while (fread(&reg,sizeof(registro),1,arquivo)==1)
     {
         printf("\n\nDados:");
-        printf("\n\nid: %d\nsort-key: %s\natributos: %s",reg.id,reg.type,reg.atributos);
+        printf("\nid: %d\nsort-key: %s\natributos: %s",reg.id,reg.type,reg.atributos);
     }
     
     getchar(); getchar();
@@ -127,4 +136,23 @@ void selecionar_especifico(FILE *arquivo)
     
     getchar(); getchar();
     system("clear");        
+}
+
+
+void alterar(FILE *arquivo)
+{
+    int id = 0;
+    registro reg;
+    
+    printf("\nDigite o ID do registro que deseja alterar: ");
+    scanf("%d",&id);
+    
+    printf("\nValue a ser reescritos: ");
+    fgets(reg.atributos, 300, stdin);
+    fgets(reg.atributos, 300, stdin);
+
+
+    fseek(arquivo, (id - 1)*sizeof(registro), SEEK_SET);
+    fwrite(&reg, sizeof(registro),1, arquivo);
+
 }
