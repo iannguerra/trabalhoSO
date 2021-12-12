@@ -16,7 +16,7 @@ struct st_registro
 };
 typedef struct st_registro registro;
 
-int main()
+int main(x)
 {
     int opcao;
     int cont = 0;

@@ -3,12 +3,14 @@
 #include<string.h>
 #include<locale.h>
 #include<ctype.h>
+#include<pthread.h>
 
 void inserir(FILE *arquivo, int cont);
 void selecionar(FILE *arquivo);
 void selecionar_especifico(FILE *arquivo);
 void deletar(FILE *arquivo);
 void alterar(FILE *arquivo);
+void *t1Func(void *arg);
 
 int key(FILE *arquivo, int cod);
 
@@ -20,8 +22,11 @@ struct st_registro
 };
 typedef struct st_registro registro;
 
-int main()
+int main(int argc, char **argv)
 {
+    pthread_t t1;
+    pthread_create(&t1, NULL, t1Func, NULL);
+
     int opcao;
     int cont = 0;
     FILE *arquivo;
@@ -39,7 +44,7 @@ int main()
                 {
                     if((arquivo = fopen("simpledb.dat", "w+b"))==NULL)
                     {
-                    printf("Erro ao abrir o arquivo!");
+                    pthread_join(t1, NULL);
                     }
                 }
                 
@@ -51,7 +56,7 @@ int main()
             case 2:
                 if((arquivo = fopen("simpledb.dat", "r+b"))==NULL)
                 {
-                    printf("Erro ao abrir o arquivo!");
+                    pthread_join(t1, NULL);
                 }
                 selecionar(arquivo);
                 fclose(arquivo);
@@ -60,7 +65,7 @@ int main()
             case 3:
                 if((arquivo = fopen("simpledb.dat", "r+b"))==NULL)
                 {
-                    printf("Erro ao abrir o arquivo!");
+                    pthread_join(t1, NULL);
                 }
                 selecionar_especifico(arquivo);
                 fclose(arquivo);
@@ -69,7 +74,7 @@ int main()
             case 4:
                 if((arquivo = fopen("simpledb.dat", "rb+"))==NULL)
                 {
-                    printf("Erro ao abrir o arquivo!");
+                    pthread_join(t1, NULL);
                 }
                 alterar(arquivo);
                 fclose(arquivo);
@@ -155,4 +160,9 @@ void alterar(FILE *arquivo)
     fseek(arquivo, (id - 1)*sizeof(registro), SEEK_SET);
     fwrite(&reg, sizeof(registro),1, arquivo);
 
+}
+
+void *t1Func(void *arg) {
+    printf("Erro ao abrir o arquivo");
+    return NULL;
 }
