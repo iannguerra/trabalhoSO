@@ -1,12 +1,14 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<pthread.h>
 
-void inserir(FILE *arquivo, int cont); // Função de inserir dados no arquivo binário
-void selecionar(FILE *arquivo); // Função para selecionar todas as informações presentes no arquivo
-void selecionar_especifico(FILE *arquivo); // Função para selecionar informações específicas
-void alterar(FILE *arquivo); // Função para alterar attributes de registro específico
-void deletar(FILE *arquivo); // Função para deletar registro específico
+void inserir(FILE *arquivo, int cont, pthread_t t1); // Função de inserir dados no arquivo binário
+void selecionar(FILE *arquivo, pthread_t t1); // Função para selecionar todas as informações presentes no arquivo
+void selecionar_especifico(FILE *arquivo, pthread_t t1); // Função para selecionar informações específicas
+void alterar(FILE *arquivo, pthread_t t1); // Função para alterar attributes de registro específico
+void deletar(FILE *arquivo, pthread_t t1); // Função para deletar registro específico
+void *t1_rotina_erro(void *arg); //Função da thread
 
 struct st_registro
 {
@@ -22,6 +24,8 @@ int main()
     int cont = 0; 
     FILE *arquivo;
 
+    pthread_t t1;
+    pthread_create(&t1, NULL, t1_rotina_erro, NULL); //Criando thread t1
     while(opcao != 6) //Enquanto for diferente da opção de encerrar, será necessário digitar um valor válido
     {
         printf("\n\n=======SIMPLEDB=======\n");
@@ -32,23 +36,23 @@ int main()
         {
             case 1:
                 cont ++;
-                inserir(arquivo, cont);
+                inserir(arquivo, cont, t1);
                 break;
             
             case 2:
-                selecionar(arquivo);
+                selecionar(arquivo, t1);
                 break;
 
             case 3:
-                selecionar_especifico(arquivo);
+                selecionar_especifico(arquivo, t1);
                 break;
             
             case 4:
-                alterar(arquivo);
+                alterar(arquivo, t1);
                 break;
 
             case 5:
-                deletar(arquivo);
+                deletar(arquivo, t1);
                 break;
 
             //default: printf("Digite uma opção válida");
@@ -57,7 +61,7 @@ int main()
     return 0;
 }
 
-void inserir(FILE *arquivo, int cont)
+void inserir(FILE *arquivo, int cont, pthread_t t1)
 {
     registro reg;
     reg.id = cont;
@@ -66,7 +70,7 @@ void inserir(FILE *arquivo, int cont)
     {
         if((arquivo = fopen("simpledb.dat", "w+b"))==NULL)
         {
-            printf("Erro ao abrir o arquivo!");
+            pthread_join(t1, NULL);
         }
     }
 
@@ -87,13 +91,13 @@ void inserir(FILE *arquivo, int cont)
 }
 
 
-void selecionar(FILE *arquivo)
+void selecionar(FILE *arquivo, pthread_t t1)
 {
     registro reg;
 
     if((arquivo = fopen("simpledb.dat", "r+b"))==NULL)
     {
-        printf("Erro ao abrir o arquivo!");
+        pthread_join(t1, NULL);
     }
 
     while (fread(&reg,sizeof(registro),1,arquivo)==1) // Lê informações enquanto não chegar ao fim do arquivo
@@ -108,14 +112,14 @@ void selecionar(FILE *arquivo)
     system("clear"); //Limpar tela da aplicação        
 }
 
-void selecionar_especifico(FILE *arquivo)
+void selecionar_especifico(FILE *arquivo, pthread_t t1)
 {
     registro reg;
     int encontrar = 0;
 
     if((arquivo = fopen("simpledb.dat", "r+b"))==NULL)
     {
-        printf("Erro ao abrir o arquivo!");
+        pthread_join(t1, NULL);
     }
 
     printf("Digite o id: ");
@@ -136,14 +140,14 @@ void selecionar_especifico(FILE *arquivo)
     system("clear"); //Limpar tela da aplicação        
 }
 
-void alterar(FILE *arquivo)
+void alterar(FILE *arquivo, pthread_t t1)
 {
     int id = 0;
     registro reg;
 
     if((arquivo = fopen("simpledb.dat", "r+b"))==NULL)
     {
-        printf("Erro ao abrir o arquivo!");
+        pthread_join(t1, NULL);
     }
     
     printf("\nDigite o ID do registro que deseja alterar: ");
@@ -162,7 +166,7 @@ void alterar(FILE *arquivo)
     system("clear"); //Limpar tela da aplicação
 }
 
-void deletar(FILE *arquivo)
+void deletar(FILE *arquivo, pthread_t t1)
 {
     FILE *arquivo_aux;
     registro reg;
@@ -170,12 +174,12 @@ void deletar(FILE *arquivo)
 
     if((arquivo = fopen("simpledb.dat", "rb+"))==NULL)
     {
-        printf("Erro ao abrir o arquivo!");
+        pthread_join(t1, NULL);
     }
 
     if((arquivo_aux = fopen("arquivo_aux.dat", "w+b"))==NULL) //Reescrever arquivo auxiliar, caso já exista
     {
-        printf("Erro ao abrir o arquivo!");
+        pthread_join(t1, NULL);
     }    
 
     printf("\nDigite o ID do registro que deseja excluir: ");
@@ -196,4 +200,9 @@ void deletar(FILE *arquivo)
     rename("arquivo_aux.dat", "simpledb.dat"); //Renomear auxiliar com os dados corretos para o nome do antigo arquivo
 
     system("clear"); //Limpar tela da aplicação
+}
+
+void *t1_rotina_erro(void *arg) {
+    printf("Erro ao abrir o arquivo");
+    return NULL;
 }
