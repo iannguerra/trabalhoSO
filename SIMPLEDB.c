@@ -1,7 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<pthread.h>
 #include"inserir_registro.c"
 #include"selecionar_todos_registros.c"
 #include"selecionar_registro_especifico.c"
